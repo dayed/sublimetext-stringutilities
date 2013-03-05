@@ -5,13 +5,14 @@ import re
 import sys
 import time
 import base64
-import htmlentitydefs
+import html.entities
 from cgi import escape
 from hashlib import md5,sha1
 from datetime import datetime
-from dateutil.parser import parse
+#from .dateutil.parser import parse
 from random import sample, choice, randrange
-import os, socket, urllib2
+import os, socket, urllib
+import binascii
 
 class ConvertTabsToSpacesCommand(sublime_plugin.TextCommand):
     #Convert Tabs To Spaces
@@ -112,7 +113,9 @@ class ConvertToBase64Command(sublime_plugin.TextCommand):
         for region in self.view.sel():
             if not region.empty():
                 text = self.view.substr(region).encode(self.enc())
-                self.view.replace(edit, region, base64.b64encode(text))
+                t = base64.b64encode(text)
+                txt = str(t,'ascii')
+                self.view.replace(edit, region, txt)
 
     def enc(self):
         if self.view.encoding() == 'Undefined':
@@ -126,11 +129,10 @@ class ConvertFromBase64Command(sublime_plugin.TextCommand):
     def run(self, edit):
         for region in self.view.sel():
             if not region.empty():
-                try:
-                    text = base64.b64decode(self.view.substr(region).encode(self.enc()))
-                    self.view.replace(edit, region, text.decode('utf-8'))
-                except:
-                    sublime.status_message('Convert error.')
+                text = self.view.substr(region).encode(self.enc())
+                t = base64.b64decode(text)
+                txt = str(t,'ascii')
+                self.view.replace(edit, region, txt)
 
     def enc(self):
         if self.view.encoding() == 'Undefined':
@@ -144,7 +146,9 @@ class ConvertToHexCommand(sublime_plugin.TextCommand):
         for region in self.view.sel():
             if not region.empty():
                 text = self.view.substr(region).encode(self.enc())
-                self.view.replace(edit, region, text.encode("hex"))
+                t = binascii.hexlify(text)
+                txt = str(t,'ascii')
+                self.view.replace(edit, region, txt)
 
     def enc(self):
         if self.view.encoding() == 'Undefined':
@@ -159,7 +163,9 @@ class ConvertFromHexCommand(sublime_plugin.TextCommand):
         for region in self.view.sel():
             if not region.empty():
                 text = self.view.substr(region).encode(self.enc())
-                self.view.replace(edit, region, text.decode("hex"))
+                t = binascii.unhexlify(text)
+                txt = str(t,'ascii')
+                self.view.replace(edit, region, txt)
 
     def enc(self):
         if self.view.encoding() == 'Undefined':
@@ -266,7 +272,11 @@ class ConvertTimeFormatCommand(sublime_plugin.TextCommand):
         for region in self.view.sel():
             if not region.empty():
                 text = self.view.substr(region)
-                result = self.from_unix(text) if re.match(ur'^([0-9]+)$', text) else self.to_unix(text)
+
+                if re.match('^([0-9]+)$', text):
+                    result = self.from_unix(text)
+                else:
+                    result = self.to_unix(text)
 
                 if result:
                     self.view.replace(edit, region, result)
@@ -314,16 +324,18 @@ class GenerateLongPasswordCommand(PasswordCommand):
         return randrange(14, 20)
 
 class GenerateSecurePasswordCommand(PasswordCommand):
-    chars = string.letters + string.digits
+    chars = string.ascii_letters + string.digits
     def length(self):
         return randrange(20, 31)
 
 
 class StringUtilitiesExtIpCommand(sublime_plugin.TextCommand):
     def run(self, edit):
-        ext_ip = urllib2.urlopen('http://api.long.ge/sublimetext/ip.php').read()
+        url = "http://api.long.ge/sublimetext/ip.php"
+        request = urllib.request.Request(url)
+        response = urllib.request.urlopen(request)
         for region in self.view.sel():
-            self.view.insert(edit, region.begin(), ext_ip.encode(self.enc()))
+            self.view.insert(edit, region.begin(), response.read().decode(self.enc()))
 
     def enc(self):
         if self.view.encoding() == 'Undefined':
@@ -336,8 +348,9 @@ class StringUtilitiesIntIpCommand(sublime_plugin.TextCommand):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(('long.ge', 0))
         int_ip = s.getsockname()[0]
+        s.close()
         for region in self.view.sel():
-                self.view.insert(edit, region.begin(), int_ip.encode(self.enc()))
+                self.view.insert(edit, region.begin(), int_ip)
 
     def enc(self):
         if self.view.encoding() == 'Undefined':
