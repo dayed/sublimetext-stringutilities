@@ -9,10 +9,10 @@ import html.entities
 from cgi import escape
 from hashlib import md5,sha1
 from datetime import datetime
-#from .dateutil.parser import parse
 from random import sample, choice, randrange
 import os, socket, urllib
 import binascii
+
 
 class ConvertTabsToSpacesCommand(sublime_plugin.TextCommand):
     #Convert Tabs To Spaces
@@ -285,12 +285,14 @@ class ConvertTimeFormatCommand(sublime_plugin.TextCommand):
 
     def from_unix(self, timestamp):
         sublime.status_message('Convert from epoch to human readable date.')
-        return datetime.fromtimestamp(int(timestamp)).strftime("%Y-%m-%d %H:%M")
+        timestamp = float(timestamp)
+        stamp = datetime.fromtimestamp(timestamp)
+        return stamp.strftime("%Y-%m-%d %H:%M")
 
     def to_unix(self, timestr):
         sublime.status_message('Convert from human readable date to epoch.')
         try:
-            return '%d' % (time.mktime(parse(timestr).timetuple()))
+            return '%d' % (time.mktime(timestr.timetuple()))
         except:
             return False
 
